@@ -2,22 +2,37 @@
 
 import flask
 import StringIO
+import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from datalog import DataType, DataLog
 
 
 
 app = flask.Flask(__name__)
 
-@app.route('/fig/<start>/<end>')
-def figure(start, end):
-	x = np.random.rand(1, 25)
-	y = np.random.rand(1, 25)
+@app.route('/')
+def figure():
+	tend = datetime.datetime.now()
+	tstart = tend - datetime.timedelta(hours=8)
+	return figure_dtype_tstart_tend(DataType.Pressure, tstart, tend)
+
+@app.route('/fig/<dtype>/<tstart>/<tend>')
+def figure_dtype_tstart_tend(dtype, tstart, tend):
+	# Extract data
+	log = DataLog()
+	log.Open()
+	pkey = log.PlaceKeyGet('Living Room')
+	times, values = log.LogQuery(pkey, dtype, tstart, tend)
+	log.Close()
+	# Plot data
 	fig = plt.figure()
-	plt.plot(x, y, 'rx-')
+	plt.plot(times, values, 'r-')
+	plt.xlabel('Time')
+	plt.ylabel('Pressure (hPa)')
 	plt.grid()
 	img = StringIO.StringIO()
-	fig.savefig(img)
+	fig.savefig(img, dpi=150)
 	img.seek(0)
 	return flask.send_file(img, mimetype='image/png')
 

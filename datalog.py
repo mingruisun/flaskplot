@@ -2,10 +2,12 @@ import sqlite3
 import os
 import datetime
 import time
+import numpy as np
 
 
 
 class DataType:
+
 	Temperature = 1
 	Pressure = 2
 	RelativeHumidity = 3
@@ -85,5 +87,14 @@ class DataLog:
 
 	def LogAdd(self, pkey, tkey, value):
 		self.__db.execute('INSERT INTO log (time,place,type,value) VALUES (?,?,?,?)', (datetime.datetime.now(),pkey,tkey,value))
-		
+
+	def LogQuery(self, pkey, tkey, tstart, tend):
+		cursor = self.__db.cursor()
+		cursor.execute('select time, value from log where place=? and type=? and time between ? and ?',
+			(pkey, tkey, tstart, tend))
+		result = cursor.fetchall()
+		cursor.close()
+		times = [ row[0] for row in result ]
+		values = np.array([ row[1] for row in result ])
+		return (times, values)
 
