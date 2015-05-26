@@ -34,7 +34,7 @@ class DataLog:
 		if initDB:
 			self.__db.execute('CREATE TABLE types (tkey INTEGER PRIMARY KEY, name TEXT, unit TEXT)')
 			self.__db.execute('CREATE TABLE places (pkey INTEGER PRIMARY KEY, name TEXT)')
-			self.__db.execute('CREATE TABLE log (lkey INTEGER PRIMARY KEY, time TIMESTAMP, place INTEGER, type INTEGER, value REAL)')
+			self.__db.execute('CREATE TABLE log (lkey INTEGER PRIMARY KEY, time TIMESTAMP, place INTEGER, type INTEGER, p25 REAL, p50 REAL, p75 REAL)')
 		# Synchronize data types with database
 		for key, value in DataType.Descriptions.iteritems():
 			tkey = self.TypeKeyGet(value[0])
@@ -54,7 +54,7 @@ class DataLog:
 	
 	def TypeKeyGet(self, name):
 		cursor = self.__db.cursor()
-		cursor.execute('select tkey from types where name=?', (name,))
+		cursor.execute('SELECT tkey FROM types WHERE name=?', (name,))
 		result = cursor.fetchone()
 		cursor.close()
 		if result is None:
@@ -67,7 +67,7 @@ class DataLog:
 
 	def PlaceKeyGet(self, name):
 		cursor = self.__db.cursor()
-		cursor.execute('select pkey from places where name=?', (name,))
+		cursor.execute('SELECT pkey FROM places WHERE name=?', (name,))
 		result = cursor.fetchone()
 		cursor.close()
 		if result is None:
@@ -85,16 +85,21 @@ class DataLog:
 		cursor.close()
 		return pkey
 
-	def LogAdd(self, pkey, tkey, value):
-		self.__db.execute('INSERT INTO log (time,place,type,value) VALUES (?,?,?,?)', (datetime.datetime.now(),pkey,tkey,value))
+	def LogAdd(self, pkey, tkey, values):
+		self.__db.execute('INSERT INTO log (time,place,type,p25,p50,p75) VALUES (?,?,?,?,?,?)',
+			(datetime.datetime.now(), pkey, tkey, values[0], values[1], values[2]))
 
 	def LogQuery(self, pkey, tkey, tstart, tend):
 		cursor = self.__db.cursor()
-		cursor.execute('select time, value from log where place=? and type=? and time between ? and ?',
+		cursor.execute('SELECT time, p25, p50, p75 FROM log WHERE place=? AND type=? AND time BETWEEN ? AND ?',
 			(pkey, tkey, tstart, tend))
 		result = cursor.fetchall()
 		cursor.close()
 		times = [ row[0] for row in result ]
-		values = np.array([ row[1] for row in result ])
-		return (times, values)
+		values = np.array([ \
+			[ row[1] for row in result ], \
+			[ row[2] for row in result ], \
+			[ row[3] for row in result ], \
+			])
+		return (times, values.T)
 
