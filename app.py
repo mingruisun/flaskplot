@@ -4,7 +4,12 @@ import flask
 import StringIO
 import datetime
 import numpy as np
+
+# Import matplotlib in a way it does not use the GUI or tkinter
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
+
 from datalog import DataType, DataLog
 
 
