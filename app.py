@@ -26,7 +26,7 @@ def figure():
 def figure_dtype_tstart_tend(dtype, tstart, tend):
 	# Extract data
 	log = DataLog()
-	log.Open()
+	log.Open(readOnly=True)
 	pkey = log.PlaceKeyGet('Living Room')
 	times, values = log.LogQuery(pkey, dtype, tstart, tend)
 	print(values)

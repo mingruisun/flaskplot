@@ -25,11 +25,17 @@ class DataLog:
 	def __init__(self, filename='datalog.sqlite'):
 		self.__filename = filename
 		self.__db = None
+		self.__fd = None
 
-	def Open(self):
+	def Open(self, readOnly=False):
 		initDB = not os.path.exists(self.__filename)
-		self.__db = sqlite3.connect(self.__filename, \
-			detect_types=sqlite3.PARSE_DECLTYPES)
+		if readOnly:
+			self.__fd = os.open(self.__filename, os.O_RDWR)
+			self.__db = sqlite3.connect("/dev/fd/%d" % self.__fd, \
+				detect_types=sqlite3.PARSE_DECLTYPES)
+		else:
+			self.__db = sqlite3.connect(self.__filename, \
+				detect_types=sqlite3.PARSE_DECLTYPES)
 		# Initialize database if file did not exist
 		if initDB:
 			self.__db.execute('CREATE TABLE types (tkey INTEGER PRIMARY KEY, name TEXT, unit TEXT)')
@@ -48,7 +54,10 @@ class DataLog:
 		if self.__db is not None:
 			self.__db.close()
 			self.__db = None
-	
+		if self.__fd is not None:
+			os.close(self.__fd)
+			self.__fd = None
+
 	def Commit(self):
 		self.__db.commit()
 	
