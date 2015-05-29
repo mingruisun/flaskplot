@@ -19,26 +19,35 @@ app = flask.Flask(__name__)
 @app.route('/')
 def figure():
 	tend = datetime.datetime.now()
-	tstart = tend - datetime.timedelta(hours=30)
-	return figure_dtype_tstart_tend(DataType.Pressure, tstart, tend)
+	tstart = tend - datetime.timedelta(hours=48)
+	return figure_dtype_tstart_tend('pt', tstart, tend)
 
-@app.route('/fig/<dtype>/<tstart>/<tend>')
-def figure_dtype_tstart_tend(dtype, tstart, tend):
-	# Extract data
+@app.route('/fig/<dtypes>/<tstart>/<tend>')
+def figure_dtype_tstart_tend(dtypes, tstart, tend):
 	log = DataLog()
 	log.Open(readOnly=True)
 	pkey = log.PlaceKeyGet('Living Room')
-	times, values = log.LogQuery(pkey, dtype, tstart, tend)
-	print(values)
+	colors = 'br'
+
+	axes = []
+	if len(dtypes) > 0:
+		fig, ax1 = plt.subplots()
+		axes.append(ax1)
+	if len(dtypes) > 1:
+		ax2 = ax1.twinx()
+		axes.append(ax2)
+	
+	for i in range(len(axes)):
+		dtype = DataType.CharToDataType(dtypes[i])
+		label = DataType.Descriptions[dtype][0] + ' (' + DataType.Descriptions[dtype][1] + ')'
+		times, values = log.LogQuery(pkey, dtype, tstart, tend)
+		axes[i].plot(times, values[:,1], '-' + colors[i])
+		axes[i].set_ylabel(label, color=colors[i])
+		for tl in axes[i].get_yticklabels():
+			tl.set_color(colors[i])
+
 	log.Close()
-	# Plot data
-	fig = plt.figure()
-	plt.plot(times, values[:,0]/100.0, 'b--')
-	plt.plot(times, values[:,1]/100.0, 'b-')
-	plt.plot(times, values[:,2]/100.0, 'b--')
-	plt.axhline(y=962.0, color='r')
 	plt.xlabel('Time')
-	plt.ylabel('Pressure (hPa)')
 	plt.grid()
 	img = StringIO.StringIO()
 	fig.savefig(img, dpi=150)

@@ -18,6 +18,17 @@ class DataType:
 		RelativeHumidity :	('Relative Humidity',	'Percent RH'), \
 	}
 
+	@staticmethod
+	def CharToDataType(c):
+		if c == 't':
+			return DataType.Temperature
+		elif c == 'p':
+			return DataType.Pressure
+		elif c == 'h':
+			return DataType.RelativeHumidity
+		else:
+			return None
+
 
 
 class DataLog:
