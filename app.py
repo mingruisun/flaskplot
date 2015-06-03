@@ -10,7 +10,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-from datalog import DataType, DataLog
+from datalog import Sensor, Signal, DataLog
 
 
 
@@ -20,27 +20,27 @@ app = flask.Flask(__name__)
 def figure():
 	tend = datetime.datetime.now()
 	tstart = tend - datetime.timedelta(hours=48)
-	return figure_dtype_tstart_tend('pt', tstart, tend)
+	return figure_dtype_tstart_tend('Brunnen.DHT22.Relative Humidity,Brunnen.BMP180.Pressure', tstart, tend)
 
-@app.route('/fig/<dtypes>/<tstart>/<tend>')
-def figure_dtype_tstart_tend(dtypes, tstart, tend):
+@app.route('/fig/<urls>/<tstart>/<tend>')
+def figure_dtype_tstart_tend(urls, tstart, tend):
 	log = DataLog()
 	log.Open(readOnly=True)
-	pkey = log.PlaceKeyGet('Living Room')
 	colors = 'br'
+	urlsSplit = urls.split(',')
 
 	axes = []
-	if len(dtypes) > 0:
+	if len(urlsSplit) > 0:
 		fig, ax1 = plt.subplots()
 		axes.append(ax1)
-	if len(dtypes) > 1:
+	if len(urlsSplit) > 1:
 		ax2 = ax1.twinx()
 		axes.append(ax2)
 	
 	for i in range(len(axes)):
-		dtype = DataType.CharToDataType(dtypes[i])
-		label = DataType.Descriptions[dtype][0] + ' (' + DataType.Descriptions[dtype][1] + ')'
-		times, values = log.LogQuery(pkey, dtype, tstart, tend)
+		url = urlsSplit[i]
+		label = url
+		times, values = log.Query(url, tstart, tend)
 		axes[i].plot(times, values[:,1], '-' + colors[i])
 		axes[i].set_ylabel(label, color=colors[i])
 		for tl in axes[i].get_yticklabels():
