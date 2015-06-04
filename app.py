@@ -41,8 +41,8 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 		url = urlsSplit[i]
 		dbkey, unit = log.SignalGet(url.split('.')[2])
 		label = url + " (" + unit + ")"
-		times, values = log.Query(url, tstart, tend)
-		axes[i].plot(times, values[:,1], '-' + colors[i])
+		times, n, values = log.Query(url, tstart, tend)
+		axes[i].plot(times, values[:,2], '-' + colors[i])
 		axes[i].set_ylabel(label, color=colors[i])
 		for tl in axes[i].get_yticklabels():
 			tl.set_color(colors[i])

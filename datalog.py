@@ -53,7 +53,7 @@ class DataLog:
 			self.__db.execute('CREATE TABLE places  (key INTEGER PRIMARY KEY, name TEXT, wgs84long REAL, wgs84lat REAL, heightMeters REAL)')
 			self.__db.execute('CREATE TABLE sensors (key INTEGER PRIMARY KEY, name TEXT, manufacturer TEXT)')
 			self.__db.execute('CREATE TABLE signals (key INTEGER PRIMARY KEY, name TEXT, unit TEXT)')
-			self.__db.execute('CREATE TABLE log     (key INTEGER PRIMARY KEY, localtime TIMESTAMP, place INTEGER, sensor INTEGER, signal INTEGER, p25 REAL, p50 REAL, p75 REAL)')
+			self.__db.execute('CREATE TABLE log     (key INTEGER PRIMARY KEY, localtime TIMESTAMP, place INTEGER, sensor INTEGER, signal INTEGER, n INTEGER, p25 REAL, p50 REAL, p75 REAL)')
 		# Synchronize local sensors with the ones in the database
 		for key, value in Sensor.Details.iteritems():
 			dbkey = self.SensorGet(value[0])
@@ -147,20 +147,25 @@ class DataLog:
 		if not len(urlSplit) == 3:
 			raise Exception('Unable to split URL "' + url + '"')
 		cursor = self.__db.cursor()
-		cursor.execute('SELECT localtime, p25, p50, p75 FROM log WHERE place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?) AND localtime BETWEEN ? AND ?',
+		cursor.execute('SELECT localtime, n, p25, p50, p75 FROM log WHERE place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?) AND localtime BETWEEN ? AND ?',
 			(urlSplit[0], urlSplit[1], urlSplit[2], tstart, tend))
 		result = cursor.fetchall()
 		cursor.close()
 		times = [ row[0] for row in result ]
+		n = np.array([ row[1] for row in result ])
 		values = np.array([ \
-			[ row[1] for row in result ], \
 			[ row[2] for row in result ], \
 			[ row[3] for row in result ], \
+			[ row[4] for row in result ], \
 			])
-		return (times, values.T)
+		return (times, n, values.T)
 
 	def Add(self, place, sensor, signal, values):
-		self.__db.execute('INSERT INTO log (localtime,place,sensor,signal,p25,p50,p75) VALUES (?,?,?,?,?,?,?)',
-			(datetime.datetime.now(), place, sensor, signal, values[0], values[1], values[2]))
+		n = len(values)
+		p25 = np.percentile(values, 25)
+		p50 = np.percentile(values, 50)
+		p75 = np.percentile(values, 75)
+		self.__db.execute('INSERT INTO log (localtime,place,sensor,signal,n,p25,p50,p75) VALUES (?,?,?,?,?,?,?,?)',
+			(datetime.datetime.now(), place, sensor, signal, n, p25, p50, p75))
 
 
