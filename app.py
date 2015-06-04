@@ -20,7 +20,7 @@ app = flask.Flask(__name__)
 def figure():
 	tend = datetime.datetime.now()
 	tstart = tend - datetime.timedelta(hours=48)
-	return figure_dtype_tstart_tend('Brunnen.DHT22.Relative Humidity,Brunnen.BMP180.Pressure', tstart, tend)
+	return figure_dtype_tstart_tend('Brunnen.DHT22.Relative_Humidity,Brunnen.BMP180.Pressure', tstart, tend)
 
 @app.route('/fig/<urls>/<tstart>/<tend>')
 def figure_dtype_tstart_tend(urls, tstart, tend):
@@ -39,7 +39,8 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 	
 	for i in range(len(axes)):
 		url = urlsSplit[i]
-		label = url
+		dbkey, unit = log.SignalGet(url.split('.')[2])
+		label = url + " (" + unit + ")"
 		times, values = log.Query(url, tstart, tend)
 		axes[i].plot(times, values[:,1], '-' + colors[i])
 		axes[i].set_ylabel(label, color=colors[i])
@@ -47,7 +48,7 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 			tl.set_color(colors[i])
 
 	log.Close()
-	plt.xlabel('Time')
+	plt.xlabel('Local Time')
 	plt.grid()
 	img = StringIO.StringIO()
 	fig.savefig(img, dpi=150)

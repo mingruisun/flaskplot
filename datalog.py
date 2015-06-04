@@ -11,13 +11,9 @@ class Sensor:
 	DHT22 = 1
 	BMP180 = 2
 
-	Descriptions = { \
+	Details = { \
 		DHT22 : ('DHT22', 'Aosong(Guangzhou) Electronics Co.,Ltd' ), \
 		BMP180 : ('BMP180', 'Bosch Sensortec' ), \
-	}
-	Parse = { \
-		"DHT22" : DHT22, \
-		"BMP180" : BMP180, \
 	}
 
 
@@ -26,17 +22,12 @@ class Signal:
 
 	Temperature = 1
 	Pressure = 2
-	RelativeHumidity = 3
+	Relative_Humidity = 3
 
-	Descriptions = { \
-		Temperature :		('Temperature',			'Degree Celsius'), \
-		Pressure :			('Pressure',			'Pascal'), \
-		RelativeHumidity :	('Relative Humidity',	'Percent RH'), \
-	}
-	Parse = { \
-		"Temperature" : Temperature, \
-		"Pressure" : Pressure, \
-		"Relative Humidity" : RelativeHumidity, \
+	Details = { \
+		Temperature :		('Temperature',			'Deg C'), \
+		Pressure :			('Pressure',			'hPa'), \
+		Relative_Humidity :	('Relative_Humidity',	'% RH'), \
 	}
 
 
@@ -59,20 +50,20 @@ class DataLog:
 				detect_types=sqlite3.PARSE_DECLTYPES)
 		# Initialize database if file did not exist
 		if initDB:
-			self.__db.execute('CREATE TABLE places  (key INTEGER PRIMARY KEY, name TEXT)')
+			self.__db.execute('CREATE TABLE places  (key INTEGER PRIMARY KEY, name TEXT, wgs84long REAL, wgs84lat REAL, heightMeters REAL)')
 			self.__db.execute('CREATE TABLE sensors (key INTEGER PRIMARY KEY, name TEXT, manufacturer TEXT)')
 			self.__db.execute('CREATE TABLE signals (key INTEGER PRIMARY KEY, name TEXT, unit TEXT)')
-			self.__db.execute('CREATE TABLE log     (key INTEGER PRIMARY KEY, time TIMESTAMP, place INTEGER, sensor INTEGER, signal INTEGER, p25 REAL, p50 REAL, p75 REAL)')
+			self.__db.execute('CREATE TABLE log     (key INTEGER PRIMARY KEY, localtime TIMESTAMP, place INTEGER, sensor INTEGER, signal INTEGER, p25 REAL, p50 REAL, p75 REAL)')
 		# Synchronize local sensors with the ones in the database
-		for key, value in Sensor.Descriptions.iteritems():
+		for key, value in Sensor.Details.iteritems():
 			dbkey = self.SensorGet(value[0])
 			if dbkey is None:
 				self.SensorAdd(key, value[0], value[1])
 			elif not dbkey == key:
 				raise Exception('Error synchronizing local sensors with those in database: {0} has key {1} locally and {2} in database'.format(value[1], key, typeno))
 		# Synchronize local signals with the ones in the database
-		for key, value in Signal.Descriptions.iteritems():
-			dbkey = self.SignalGet(value[0])
+		for key, value in Signal.Details.iteritems():
+			(dbkey, unit) = self.SignalGet(value[0])
 			if dbkey is None:
 				self.SignalAdd(key, value[0], value[1])
 			elif not dbkey == key:
@@ -100,12 +91,13 @@ class DataLog:
 		else:
 			return result[0]
 
-	def PlaceAdd(self, name):
+	def PlaceAdd(self, name, wgs84long, wgs84lat, heightMeters):
 		key = self.PlaceGet(name)
 		if key is not None:
 			return key
 		cursor = self.__db.cursor()
-		cursor.execute('INSERT INTO places (name) VALUES (?)', (name,))
+		cursor.execute('INSERT INTO places (name, wgs84long, wgs84lat, heightMeters) VALUES (?,?,?,?)', \
+			(name, wgs84long, wgs84lat, heightMeters))
 		key = cursor.lastrowid
 		cursor.close()
 		return key
@@ -125,20 +117,20 @@ class DataLog:
 
 	def SignalGet(self, name):
 		cursor = self.__db.cursor()
-		cursor.execute('SELECT key FROM signals WHERE name=?', (name,))
+		cursor.execute('SELECT key, unit FROM signals WHERE name=?', (name,))
 		result = cursor.fetchone()
 		cursor.close()
 		if result is None:
-			return None
+			return (None, None)
 		else:
-			return result[0]
+			return (result[0], result[1])
 	
 	def SignalAdd(self, key, name, unit):
 		self.__db.execute('INSERT INTO signals (key, name, unit) VALUES (?,?,?)', (key, name, unit))
 
 	def QueryRaw(self, place, sensor, signal, tstart, tend):
 		cursor = self.__db.cursor()
-		cursor.execute('SELECT time, p25, p50, p75 FROM log WHERE place=? AND sensor=? AND signal=? AND time BETWEEN ? AND ?',
+		cursor.execute('SELECT localtime, p25, p50, p75 FROM log WHERE place=? AND sensor=? AND signal=? AND localtime BETWEEN ? AND ?',
 			(place, sensor, signal, tstart, tend))
 		result = cursor.fetchall()
 		cursor.close()
@@ -155,7 +147,7 @@ class DataLog:
 		if not len(urlSplit) == 3:
 			raise Exception('Unable to split URL "' + url + '"')
 		cursor = self.__db.cursor()
-		cursor.execute('SELECT time, p25, p50, p75 FROM log WHERE place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?) AND time BETWEEN ? AND ?',
+		cursor.execute('SELECT localtime, p25, p50, p75 FROM log WHERE place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?) AND localtime BETWEEN ? AND ?',
 			(urlSplit[0], urlSplit[1], urlSplit[2], tstart, tend))
 		result = cursor.fetchall()
 		cursor.close()
@@ -168,7 +160,7 @@ class DataLog:
 		return (times, values.T)
 
 	def Add(self, place, sensor, signal, values):
-		self.__db.execute('INSERT INTO log (time,place,sensor,signal,p25,p50,p75) VALUES (?,?,?,?,?,?,?)',
+		self.__db.execute('INSERT INTO log (localtime,place,sensor,signal,p25,p50,p75) VALUES (?,?,?,?,?,?,?)',
 			(datetime.datetime.now(), place, sensor, signal, values[0], values[1], values[2]))
 
 

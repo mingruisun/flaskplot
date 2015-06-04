@@ -18,7 +18,7 @@ def Percentiles(v):
 log = DataLog()
 
 def SignalHandler(signal, frame):
-	print('Closing database ...')
+	print('\nClosing database ...\n')
 	log.Close()
 	sys.exit(0)
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 	n = 10
 	log.Open()
 	signal.signal(signal.SIGINT, SignalHandler)
-	pkey = log.PlaceAdd('Brunnen')
+	pkey = log.PlaceAdd('Brunnen', 8.61027, 47.00130, 438.0)
 	while True:
 		t1 = np.zeros(n)
 		p = np.zeros(n)
@@ -38,13 +38,13 @@ if __name__ == '__main__':
 		for i in range(n):
 			t1[i] = bmp085.read_temperature()
 			time.sleep(3.3)
-			p[i]  = bmp085.read_pressure()
+			p[i]  = bmp085.read_pressure() / 100.0	# Pa -> hPa
 			time.sleep(3.3)
 			h[i], t2[i] = Adafruit_DHT.read_retry(Adafruit_DHT.DHT22, 4)
 			time.sleep(3.3)
 		log.Add(pkey, Sensor.BMP180, Signal.Temperature, Percentiles(t1))
 		log.Add(pkey, Sensor.BMP180, Signal.Pressure, Percentiles(p))
-		log.Add(pkey, Sensor.DHT22, Signal.RelativeHumidity, Percentiles(h))
+		log.Add(pkey, Sensor.DHT22, Signal.Relative_Humidity, Percentiles(h))
 		log.Add(pkey, Sensor.DHT22, Signal.Temperature, Percentiles(t2))
 		log.Commit()
 
