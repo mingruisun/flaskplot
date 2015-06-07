@@ -10,6 +10,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
+from mpl_toolkits.axes_grid1 import host_subplot
+import mpl_toolkits.axisartist as AA
 from datalog import Sensor, Signal, DataLog
 
 
@@ -19,39 +21,52 @@ app = flask.Flask(__name__)
 @app.route('/')
 def figure():
 	tend = datetime.datetime.now()
-	tstart = tend - datetime.timedelta(hours=48)
-	return figure_dtype_tstart_tend('Brunnen.DHT22.Relative_Humidity,Brunnen.BMP180.Pressure', tstart, tend)
+	tstart = tend - datetime.timedelta(hours=8)
+	return figure_dtype_tstart_tend('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
 
 @app.route('/fig/<urls>/<tstart>/<tend>')
 def figure_dtype_tstart_tend(urls, tstart, tend):
 	log = DataLog()
 	log.Open(readOnly=True)
-	colors = 'br'
+	colors = 'rgb'
 	urlsSplit = urls.split(',')
 
-	axes = []
+	ax = []
+	pos = []
 	if len(urlsSplit) > 0:
-		fig, ax1 = plt.subplots()
-		axes.append(ax1)
+		host = host_subplot(111, axes_class=AA.Axes)
+		ax.append(host)
+		pos.append('left')
 	if len(urlsSplit) > 1:
-		ax2 = ax1.twinx()
-		axes.append(ax2)
+		par1 = host.twinx()
+		ax.append(par1)
+		pos.append('right')
+	if len(urlsSplit) > 2:
+		par2 = host.twinx()
+		plt.subplots_adjust(right=0.75)
+		offset = 60
+		new_fixed_axis = par2.get_grid_helper().new_fixed_axis
+		par2.axis["right"] = new_fixed_axis(loc="right", axes=par2, offset=(offset, 0))
+		ax.append(par2)
+		pos.append('right')
 	
-	for i in range(len(axes)):
+	for i in range(len(ax)):
 		url = urlsSplit[i]
 		dbkey, unit = log.SignalGet(url.split('.')[2])
 		label = url + " (" + unit + ")"
 		times, n, values = log.Query(url, tstart, tend)
-		axes[i].plot(times, values[:,2], '-' + colors[i])
-		axes[i].set_ylabel(label, color=colors[i])
-		for tl in axes[i].get_yticklabels():
-			tl.set_color(colors[i])
+		ax[i].plot(times, values[:,2], '-' + colors[i])
+		ax[i].set_ylabel(label)
+		ax[i].tick_params(axis='y', colors=colors[i], which='both')
+		ax[i].axis[pos[i]].label.set_color(colors[i])
+		#ax[i].axis[pos[i]].line.set_color(colors[i])
+		ax[i].axis[pos[i]].major_ticklabels.set_color(colors[i])
 
 	log.Close()
-	plt.xlabel('Local Time')
-	plt.grid()
+	ax[0].set_xlabel('Local Time')
+	ax[0].grid()
 	img = StringIO.StringIO()
-	fig.savefig(img, dpi=150)
+	plt.savefig(img, dpi=150)
 	img.seek(0)
 	return flask.send_file(img, mimetype='image/png')
 
