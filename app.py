@@ -59,8 +59,9 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 		ax[i].set_ylabel(label)
 		ax[i].tick_params(axis='y', colors=colors[i], which='both')
 		ax[i].axis[pos[i]].label.set_color(colors[i])
-		#ax[i].axis[pos[i]].line.set_color(colors[i])
 		ax[i].axis[pos[i]].major_ticklabels.set_color(colors[i])
+		if i > 0:
+			ax[i].axis['bottom'].toggle(all=False)
 
 	log.Close()
 	ax[0].set_xlabel('Local Time')
