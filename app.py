@@ -67,6 +67,7 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 	ax[0].grid()
 	img = StringIO.StringIO()
 	plt.savefig(img, dpi=150)
+	plt.close()
 	img.seek(0)
 	return flask.send_file(img, mimetype='image/png')
 
