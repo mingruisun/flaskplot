@@ -141,14 +141,31 @@ class DataLog:
 			[ row[3] for row in result ], \
 			])
 		return (times, values.T)
-	
-	def Query(self, url, tstart, tend):
+
+	def UrlToCursor(self, result, url, tstart=None, tend=None):
 		urlSplit = url.split('.')
 		if not len(urlSplit) == 3:
 			raise Exception('Unable to split URL "' + url + '"')
+		urlSql = 'place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?)'
 		cursor = self.__db.cursor()
-		cursor.execute('SELECT localtime, n, p25, p50, p75 FROM log WHERE place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?) AND localtime BETWEEN ? AND ?',
-			(urlSplit[0], urlSplit[1], urlSplit[2], tstart, tend))
+		if tstart is None:
+			if tend is None:
+				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql,
+					(urlSplit[0], urlSplit[1], urlSplit[2]))
+			else:
+				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql + ' AND (localtime < ?)',
+					(urlSplit[0], urlSplit[1], urlSplit[2], tend))
+		else:
+			if tend is None:
+				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql + ' AND (localtime > ?)',
+					(urlSplit[0], urlSplit[1], urlSplit[2], tstart))
+			else:
+				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql + ' AND (localtime BETWEEN ? AND ?)',
+					(urlSplit[0], urlSplit[1], urlSplit[2], tstart, tend))
+		return cursor
+
+	def Query(self, url, tstart=None, tend=None):
+		cursor = self.UrlToCursor('localtime, n, p25, p50, p75', url, tstart, tend)
 		result = cursor.fetchall()
 		cursor.close()
 		times = [ row[0] for row in result ]
@@ -159,6 +176,12 @@ class DataLog:
 			[ row[4] for row in result ], \
 			])
 		return (times, n, values.T)
+
+	def QueryAccumulates(self, url, tstart=None, tend=None):
+		cursor = self.UrlToCursor('sum(n), min(p50), max(p50)', url, tstart, tend)
+		result = cursor.fetchone()
+		cursor.close()
+		return result
 
 	def Add(self, place, sensor, signal, values):
 		n = len(values)

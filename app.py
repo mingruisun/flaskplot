@@ -21,7 +21,7 @@ app = flask.Flask(__name__)
 @app.route('/')
 def figure():
 	tend = datetime.datetime.now()
-	tstart = tend - datetime.timedelta(hours=8)
+	tstart = tend - datetime.timedelta(hours=24)
 	return figure_dtype_tstart_tend('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
 
 @app.route('/fig/<urls>/<tstart>/<tend>')
@@ -55,7 +55,9 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 		dbkey, unit = log.SignalGet(url.split('.')[2])
 		label = url + " (" + unit + ")"
 		times, n, values = log.Query(url, tstart, tend)
+		sumn, minp50, maxp50 = log.QueryAccumulates(url)
 		ax[i].plot(times, values[:,2], '-' + colors[i])
+		ax[i].set_ylim([ np.floor(minp50), np.ceil(maxp50) ])
 		ax[i].set_ylabel(label)
 		ax[i].tick_params(axis='y', colors=colors[i], which='both')
 		ax[i].axis[pos[i]].label.set_color(colors[i])
