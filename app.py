@@ -16,6 +16,27 @@ from datalog import Sensor, Signal, DataLog
 
 
 
+def DoPlot(x, y, axis, fmt):
+	# Get diff in time axis in seconds
+	dt = [ (x[i+1] - x[i]).total_seconds() for i in range(len(x)-1) ]
+	# Determine range [tmin..tmax] for which two samples are considered to be in the same section
+	p25 = np.percentile(dt, 25)
+	p50 = np.percentile(dt, 50)
+	p75 = np.percentile(dt, 75)
+	d = 5
+	tmin = p50 + d * (p25 - p50)
+	tmax = p50 + d * (p75 - p50)
+	# Find sections
+	indices = np.where(np.logical_or(dt < tmin, dt > tmax))[0]
+	indices = np.append(indices, len(dt)-1)
+	# Plot the data section-wise
+	start = 0
+	for end in indices:
+		axis.plot(x[start:end], y[start:end], fmt)
+		start = end + 1
+
+
+
 app = flask.Flask(__name__)
 
 @app.route('/')
@@ -56,7 +77,8 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 		label = url + " (" + unit + ")"
 		times, n, values = log.Query(url, tstart, tend)
 		sumn, minp50, maxp50 = log.QueryAccumulates(url)
-		ax[i].plot(times, values[:,2], '-' + colors[i])
+		DoPlot(times, values[:,2], ax[i], '-' + colors[i])
+		ax[i].set_xlim([tstart, tend])
 		ax[i].set_ylim([ np.floor(minp50), np.ceil(maxp50) ])
 		ax[i].set_ylabel(label)
 		ax[i].tick_params(axis='y', colors=colors[i], which='both')
