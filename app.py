@@ -43,12 +43,6 @@ def DoPlot(x, y, axis, fmt):
 
 app = flask.Flask(__name__)
 
-@app.route('/')
-def figure():
-	tend = datetime.datetime.now()
-	tstart = tend - datetime.timedelta(hours=24)
-	return figure_dtype_tstart_tend('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
-
 @app.route('/fig/<urls>/<tstart>/<tend>')
 def figure_dtype_tstart_tend(urls, tstart, tend):
 	log = DataLog()
@@ -101,8 +95,10 @@ def figure_dtype_tstart_tend(urls, tstart, tend):
 	return flask.send_file(img, mimetype='image/png')
 
 @app.route('/')
-def form():
-	return flask.render_template('form.html')
+def figure():
+	tend = datetime.datetime.now()
+	tstart = tend - datetime.timedelta(hours=24)
+	return figure_dtype_tstart_tend('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=80, debug=True)
