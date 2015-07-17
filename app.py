@@ -17,6 +17,10 @@ from datalog import Sensor, Signal, DataLog
 
 
 def DoPlot(x, y, axis, fmt):
+	if not len(x) == len(y):
+		raise Exception('Cannot plot, len(x)={0} but len(y)={1}'.format(len(x), len(y)))
+	if len(x) == 0:
+		return
 	# Get diff in time axis in seconds
 	dt = [ (x[i+1] - x[i]).total_seconds() for i in range(len(x)-1) ]
 	# Determine range [tmin..tmax] for which two samples are considered to be in the same section
