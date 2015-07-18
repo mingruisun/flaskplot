@@ -94,15 +94,16 @@ class DataLog:
 			return result[0]
 
 	def PlaceAdd(self, name, wgs84long, wgs84lat, heightMeters):
-		key = self.PlaceGet(name)
-		if key is not None:
+		try:
+			key = self.PlaceGet(name)
 			return key
-		cursor = self.__db.cursor()
-		cursor.execute('INSERT INTO places (name, wgs84long, wgs84lat, heightMeters) VALUES (?,?,?,?)', \
-			(name, wgs84long, wgs84lat, heightMeters))
-		key = cursor.lastrowid
-		cursor.close()
-		return key
+		except:
+			cursor = self.__db.cursor()
+			cursor.execute('INSERT INTO places (name, wgs84long, wgs84lat, heightMeters) VALUES (?,?,?,?)', \
+				(name, wgs84long, wgs84lat, heightMeters))
+			key = cursor.lastrowid
+			cursor.close()
+			return key
 
 	def SensorGet(self, name):
 		cursor = self.__db.cursor()
