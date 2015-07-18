@@ -41,7 +41,7 @@ def DoPlot(x, y, axis, fmt):
 	if not len(x) == len(y):
 		raise Exception('Cannot plot, len(x)={0} but len(y)={1}'.format(len(x), len(y)))
 	if len(x) == 0:
-		return
+		raise Exception('No data to plot')
 	# Get diff in time axis in seconds
 	dt = [ (x[i+1] - x[i]).total_seconds() for i in range(len(x)-1) ]
 	# Determine range [tmin..tmax] for which two samples are considered to be in the same section
@@ -93,20 +93,25 @@ def figure_dtype_tstart_tend(urls, tstartstr, tendstr):
 		pos.append('right')
 	
 	for i in range(len(ax)):
-		url = urlsSplit[i]
-		dbkey, unit = log.SignalGet(url.split('.')[2])
-		label = url + " (" + unit + ")"
-		times, n, values = log.Query(url, tstart, tend)
-		sumn, minp50, maxp50 = log.QueryAccumulates(url)
-		DoPlot(times, values[:,2], ax[i], '-' + colors[i])
-		ax[i].set_xlim([tstart, tend])
-		ax[i].set_ylim([ np.floor(minp50), np.ceil(maxp50) ])
-		ax[i].set_ylabel(label)
-		ax[i].tick_params(axis='y', colors=colors[i], which='both')
-		ax[i].axis[pos[i]].label.set_color(colors[i])
-		ax[i].axis[pos[i]].major_ticklabels.set_color(colors[i])
-		if i > 0:
-			ax[i].axis['bottom'].toggle(all=False)
+		try:
+			url = urlsSplit[i]
+			dbkey, unit = log.SignalGet(url.split('.')[2])
+			label = url + " (" + unit + ")"
+			times, n, values = log.Query(url, tstart, tend)
+			sumn, minp50, maxp50 = log.QueryAccumulates(url)
+			ax[i].set_xlim([tstart, tend])
+			ax[i].set_ylim([ np.floor(minp50), np.ceil(maxp50) ])
+			ax[i].set_ylabel(label)
+			ax[i].tick_params(axis='y', colors=colors[i], which='both')
+			ax[i].axis[pos[i]].label.set_color(colors[i])
+			ax[i].axis[pos[i]].major_ticklabels.set_color(colors[i])
+			DoPlot(times, values[:,2], ax[i], '-' + colors[i])
+			if i > 0:
+				ax[i].axis['bottom'].toggle(all=False)
+		except Exception as e:
+			ax[i].text(0.5, 0.25 + 0.25 * i, str(e), horizontalalignment='center', verticalalignment='center', \
+				transform = ax[i].transAxes, color=colors[i])
+			
 
 	log.Close()
 	ax[0].set_xlabel('Local Time')

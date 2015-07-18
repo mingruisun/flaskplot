@@ -87,7 +87,7 @@ class DataLog:
 		result = cursor.fetchone()
 		cursor.close()
 		if result is None:
-			return None
+			raise Exception('Unable to get place of name "' + name + '"')
 		else:
 			return result[0]
 
@@ -108,7 +108,7 @@ class DataLog:
 		result = cursor.fetchone()
 		cursor.close()
 		if result is None:
-			return None
+			raise Exception('Unable to get sensor of name "' + name + '"')
 		else:
 			return result[0]
 	
@@ -121,7 +121,7 @@ class DataLog:
 		result = cursor.fetchone()
 		cursor.close()
 		if result is None:
-			return (None, None)
+			raise Exception('Unable to get signal of name "' + name + '"')
 		else:
 			return (result[0], result[1])
 	
@@ -146,27 +146,32 @@ class DataLog:
 		urlSplit = url.split('.')
 		if not len(urlSplit) == 3:
 			raise Exception('Unable to split URL "' + url + '"')
-		urlSql = 'place=(SELECT key FROM places WHERE name=?) AND sensor=(SELECT key FROM sensors WHERE name=?) AND signal=(select key FROM signals WHERE name=?)'
+		placekey = self.PlaceGet(urlSplit[0])
+		sensorkey = self.SensorGet(urlSplit[1])
+		signalkey, signalunit = self.SignalGet(urlSplit[2])
+		urlSql = 'place=? and sensor=? and signal=?'
 		cursor = self.__db.cursor()
 		if tstart is None:
 			if tend is None:
 				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql,
-					(urlSplit[0], urlSplit[1], urlSplit[2]))
+					(placekey, sensorkey, signalkey))
 			else:
 				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql + ' AND (localtime < ?)',
-					(urlSplit[0], urlSplit[1], urlSplit[2], tend))
+					(placekey, sensorkey, signalkey, tend))
 		else:
 			if tend is None:
 				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql + ' AND (localtime > ?)',
-					(urlSplit[0], urlSplit[1], urlSplit[2], tstart))
+					(placekey, sensorkey, signalkey, tstart))
 			else:
 				cursor.execute('SELECT ' + result + ' FROM log WHERE ' + urlSql + ' AND (localtime BETWEEN ? AND ?)',
-					(urlSplit[0], urlSplit[1], urlSplit[2], tstart, tend))
+					(placekey, sensorkey, signalkey, tstart, tend))
 		return cursor
 
 	def Query(self, url, tstart=None, tend=None):
 		cursor = self.UrlToCursor('localtime, n, p25, p50, p75', url, tstart, tend)
 		result = cursor.fetchall()
+		#if len(result) == 0:
+		#	raise Exception('Empty query for "' + url + '"')
 		cursor.close()
 		times = [ row[0] for row in result ]
 		n = np.array([ row[1] for row in result ])
