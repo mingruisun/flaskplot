@@ -56,18 +56,20 @@ class DataLog:
 			self.__db.execute('CREATE TABLE log     (key INTEGER PRIMARY KEY, localtime TIMESTAMP, place INTEGER, sensor INTEGER, signal INTEGER, n INTEGER, p25 REAL, p50 REAL, p75 REAL)')
 		# Synchronize local sensors with the ones in the database
 		for key, value in Sensor.Details.iteritems():
-			dbkey = self.SensorGet(value[0])
-			if dbkey is None:
+			try:
+				dbkey = self.SensorGet(value[0])
+				if not dbkey == key:
+					raise Exception('Error synchronizing local sensors with those in database: {0} has key {1} locally and {2} in database'.format(value[1], key, typeno))
+			except:
 				self.SensorAdd(key, value[0], value[1])
-			elif not dbkey == key:
-				raise Exception('Error synchronizing local sensors with those in database: {0} has key {1} locally and {2} in database'.format(value[1], key, typeno))
 		# Synchronize local signals with the ones in the database
 		for key, value in Signal.Details.iteritems():
-			(dbkey, unit) = self.SignalGet(value[0])
-			if dbkey is None:
+			try:
+				(dbkey, unit) = self.SignalGet(value[0])
+				if not dbkey == key:
+					raise Exception('Error synchronizing local signals with those in database: {0} has key {1} locally and {2} in database'.format(value[1], key, typeno))
+			except:
 				self.SignalAdd(key, value[0], value[1])
-			elif not dbkey == key:
-				raise Exception('Error synchronizing local signals with those in database: {0} has key {1} locally and {2} in database'.format(value[1], key, typeno))
 		self.Commit()
 
 	def Close(self):
