@@ -16,6 +16,27 @@ from datalog import Sensor, Signal, DataLog
 
 
 
+def ParseDate(date):
+	if isinstance(date, datetime.datetime):
+		return date
+	elif isinstance(date, basestring):
+		try:
+			return datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+		except:
+			pass
+		try:
+			return datetime.datetime.strptime(date, '%Y-%m-%d')
+		except:
+			pass
+		try:
+			datestr = datetime.datetime.now().strftime('%Y-%m-%d')
+			return datetime.datetime.strptime(datestr + ' ' + date, '%Y-%m-%d %H:%M:%S')
+		except:
+			pass
+		raise Exception('Unable to parse date "' + date + '"')
+
+
+
 def DoPlot(x, y, axis, fmt):
 	if not len(x) == len(y):
 		raise Exception('Cannot plot, len(x)={0} but len(y)={1}'.format(len(x), len(y)))
@@ -43,8 +64,10 @@ def DoPlot(x, y, axis, fmt):
 
 app = flask.Flask(__name__)
 
-@app.route('/fig/<urls>/<tstart>/<tend>')
-def figure_dtype_tstart_tend(urls, tstart, tend):
+@app.route('/fig/<urls>/<tstartstr>/<tendstr>')
+def figure_dtype_tstart_tend(urls, tstartstr, tendstr):
+	tstart = ParseDate(tstartstr)
+	tend = ParseDate(tendstr)
 	log = DataLog()
 	log.Open(readOnly=True)
 	colors = 'rgb'
