@@ -125,9 +125,9 @@ def figure_dtype_tstart_tend(urls, tstartstr, tendstr):
 @app.route('/')
 def figure():
 	tend = datetime.datetime.now()
-	tstart = tend - datetime.timedelta(hours=24)
+	tstart = tend - datetime.timedelta(days=3)
 	return figure_dtype_tstart_tend('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
 
 if __name__ == '__main__':
-	app.run(host='0.0.0.0', port=80, debug=True)
+	app.run(host='0.0.0.0', port=80, debug=False)
 
