@@ -65,7 +65,7 @@ def DoPlot(x, y, axis, fmt):
 app = flask.Flask(__name__)
 
 @app.route('/fig/<urls>/<tstartstr>/<tendstr>')
-def figure_dtype_tstart_tend(urls, tstartstr, tendstr):
+def render_plot(urls, tstartstr, tendstr):
 	tstart = ParseDate(tstartstr)
 	tend = ParseDate(tendstr)
 	log = DataLog()
@@ -111,7 +111,6 @@ def figure_dtype_tstart_tend(urls, tstartstr, tendstr):
 		except Exception as e:
 			ax[i].text(0.5, 0.25 + 0.25 * i, str(e), horizontalalignment='center', verticalalignment='center', \
 				transform = ax[i].transAxes, color=colors[i])
-			
 
 	log.Close()
 	ax[0].set_xlabel('Local Time')
@@ -122,11 +121,15 @@ def figure_dtype_tstart_tend(urls, tstartstr, tendstr):
 	img.seek(0)
 	return flask.send_file(img, mimetype='image/png')
 
-@app.route('/')
-def figure():
+@app.route('/fig')
+def default_plot():
 	tend = datetime.datetime.now()
 	tstart = tend - datetime.timedelta(days=3)
-	return figure_dtype_tstart_tend('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
+	return render_plot('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
+
+@app.route('/')
+def form():
+	return flask.render_template('form.html')
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=80, debug=False)
