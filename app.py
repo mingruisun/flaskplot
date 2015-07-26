@@ -108,13 +108,16 @@ def render_plot(urls, tstartstr, tendstr):
 			DoPlot(times, values[:,2], ax[i], '-' + colors[i])
 			if i > 0:
 				ax[i].axis['bottom'].toggle(all=False)
+			else:
+				ax[i].axis["bottom"].major_ticklabels.set_rotation(30)
+				ax[i].axis["bottom"].major_ticklabels.set_ha("right")
+				#ax[i].set_xlabel('Local Time')
+				ax[i].grid()
 		except Exception as e:
 			ax[i].text(0.5, 0.25 + 0.25 * i, str(e), horizontalalignment='center', verticalalignment='center', \
 				transform = ax[i].transAxes, color=colors[i])
 
 	log.Close()
-	ax[0].set_xlabel('Local Time')
-	ax[0].grid()
 	img = StringIO.StringIO()
 	plt.savefig(img, dpi=150)
 	plt.close()
