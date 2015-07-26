@@ -29,7 +29,7 @@ def ParseDate(date):
 		except:
 			pass
 		try:
-			datestr = datetime.datetime.now().strftime('%Y-%m-%d')
+			datestr = datetime.datetime.utcnow().strftime('%Y-%m-%d')
 			return datetime.datetime.strptime(datestr + ' ' + date, '%Y-%m-%d %H:%M:%S')
 		except:
 			pass
@@ -114,7 +114,7 @@ def render_plot(urls, tstartstr, tendstr):
 
 	ax[0].axis["bottom"].major_ticklabels.set_rotation(30)
 	ax[0].axis["bottom"].major_ticklabels.set_ha("right")
-	#ax[i].set_xlabel('Local Time')
+	#ax[i].set_xlabel('UTC')
 	ax[0].grid()
 
 	log.Close()
@@ -126,7 +126,7 @@ def render_plot(urls, tstartstr, tendstr):
 
 @app.route('/fig')
 def default_plot():
-	tend = datetime.datetime.now()
+	tend = datetime.datetime.utcnow()
 	tstart = tend - datetime.timedelta(days=3)
 	return render_plot('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
 
