@@ -3,6 +3,7 @@
 import flask
 import StringIO
 import datetime
+from dateutil import tz
 import numpy as np
 
 # Import matplotlib in a way it does not use the GUI or tkinter
@@ -13,6 +14,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 import mpl_toolkits.axisartist as AA
 from datalog import Sensor, Signal, DataLog
+
+
+
+def UtcToLocalTime(utc):
+	if type(utc) is list:
+		return [ t.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()) for t in utc ]
+	else:
+		return utc.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
 
 
 
@@ -42,6 +51,7 @@ def DoPlot(x, y, axis, fmt):
 		raise Exception('Cannot plot, len(x)={0} but len(y)={1}'.format(len(x), len(y)))
 	if len(x) == 0:
 		raise Exception('No data to plot')
+	x = UtcToLocalTime(x)
 	# Get diff in time axis in seconds
 	dt = [ (x[i+1] - x[i]).total_seconds() for i in range(len(x)-1) ]
 	# Determine range [tmin..tmax] for which two samples are considered to be in the same section
@@ -114,7 +124,6 @@ def render_plot(urls, tstartstr, tendstr):
 
 	ax[0].axis["bottom"].major_ticklabels.set_rotation(30)
 	ax[0].axis["bottom"].major_ticklabels.set_ha("right")
-	#ax[i].set_xlabel('UTC')
 	ax[0].grid()
 
 	log.Close()
