@@ -5,6 +5,7 @@ import StringIO
 import datetime
 from dateutil import tz
 import numpy as np
+import ephem
 
 # Import matplotlib in a way it does not use the GUI or tkinter
 import matplotlib as mpl
@@ -17,32 +18,83 @@ from datalog import Sensor, Signal, DataLog
 
 
 
-def UtcToLocalTime(utc):
-	if type(utc) is list:
-		return [ t.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()) for t in utc ]
+# Convert local time or vector of local times to UTC time
+def LocalTimeToUtc(localtime):
+	if isinstance(localtime, datetime.datetime):
+		return localtime.replace(tzinfo=tz.tzlocal()).astimezone(tz.tzutc())
+	elif isinstance(localtime, list):
+		return [ t.replace(tzinfo=tz.tzlocal()).astimezone(tz.tzutc()) for t in localtime ]
 	else:
-		return utc.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+		raise Exception('Local time ' + str(localtime) + ' has unknown type ' + str(type(localtime)))
 
 
 
-def ParseDate(date):
-	if isinstance(date, datetime.datetime):
-		return date
-	elif isinstance(date, basestring):
+# Convert UTC time or vector of local times to local time
+def UtcToLocalTime(utctime):
+	if isinstance(utctime, datetime.datetime):
+		return utctime.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+	elif isinstance(utctime, list):
+		return [ t.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()) for t in utctime ]
+	else:
+		raise Exception('UTC time ' + str(utctime) + ' has unknown type ' + str(type(utctime)))
+
+
+
+# Take local date in any form and return UTC time
+def ParseDate(localdate):
+	if isinstance(localdate, datetime.datetime):
+		return LocalTimeToUtc(localdate)
+	elif isinstance(localdate, basestring):
+		if localdate == 'now':
+			return datetime.datetime.utcnow()
 		try:
-			return datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+			return LocalTimeToUtc(datetime.datetime.strptime(localdate, '%Y-%m-%d %H:%M:%S'))
 		except:
 			pass
 		try:
-			return datetime.datetime.strptime(date, '%Y-%m-%d')
+			return LocalTimeToUtc(datetime.datetime.strptime(localdate, '%Y-%m-%d'))
 		except:
 			pass
 		try:
 			datestr = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-			return datetime.datetime.strptime(datestr + ' ' + date, '%Y-%m-%d %H:%M:%S')
+			return LocalTimeToUtc(datetime.datetime.strptime(datestr + ' ' + localdate, '%Y-%m-%d %H:%M:%S'))
 		except:
 			pass
-		raise Exception('Unable to parse date "' + date + '"')
+		raise Exception('Unable to parse date "' + localdate + '"')
+	else:
+		raise Exception('Date ' + str(localdate) + ' has unknown type ' + str(type(localdate)))
+
+
+
+def GetSunEvents(wgs84long, wgs84lat, utcdate):
+	o = ephem.Observer()
+	o.long = wgs84long
+	o.lat = wgs84lat
+	sun = ephem.Sun()
+	sunrise = o.previous_rising(sun, start=utcdate)
+	noon = o.next_transit(sun, start=sunrise)
+	sunset = o.next_setting(sun, start=noon)
+	return sunrise, sunset
+
+
+
+def GetSunEventsInDateRange(wgs84long, wgs84lat, tstart, tend):
+	numdays = int(np.ceil((tend - tstart).total_seconds() / (24.0 * 60.0 * 60.0))) + 1
+	days = [ (tstart + datetime.timedelta(days=d)).replace(hour=12, minute=0, second=0, microsecond=0) for d in range(numdays) ]
+	events = []
+	for d in days:
+		events.append(GetSunEvents(wgs84long, wgs84lat, d))
+	return events
+
+
+
+def PlotDayNight(axis, tstart, tend):
+	events = GetSunEventsInDateRange('8.61027', '47.00130', tstart, tend)
+	axis.axvspan(tstart, tend, facecolor='0.5', alpha=0.5)
+	for e in events:
+		t0 = UtcToLocalTime(e[0].datetime())
+		t1 = UtcToLocalTime(e[1].datetime())
+		axis.axvspan(t0, t1, facecolor='1.0')
 
 
 
@@ -109,7 +161,7 @@ def render_plot(urls, tstartstr, tendstr):
 			label = url + " (" + unit + ")"
 			times, n, values = log.Query(url, tstart, tend)
 			sumn, minp50, maxp50 = log.QueryAccumulates(url)
-			ax[i].set_xlim([tstart, tend])
+			ax[i].set_xlim(UtcToLocalTime([tstart, tend]))
 			ax[i].set_ylim([ np.floor(minp50), np.ceil(maxp50) ])
 			ax[i].set_ylabel(label)
 			ax[i].tick_params(axis='y', colors=colors[i], which='both')
@@ -122,6 +174,7 @@ def render_plot(urls, tstartstr, tendstr):
 			ax[i].text(0.5, (1 + i) / (len(ax) + 1.0), str(e), horizontalalignment='center', verticalalignment='center', \
 				transform = ax[i].transAxes, color=colors[i])
 
+	PlotDayNight(ax[0], tstart, tend)
 	ax[0].axis["bottom"].major_ticklabels.set_rotation(30)
 	ax[0].axis["bottom"].major_ticklabels.set_ha("right")
 	ax[0].grid()
