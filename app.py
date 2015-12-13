@@ -88,8 +88,8 @@ def GetSunEventsInDateRange(wgs84long, wgs84lat, tstart, tend):
 
 
 
-def PlotDayNight(axis, tstart, tend):
-	events = GetSunEventsInDateRange('8.61027', '47.00130', tstart, tend)
+def PlotDayNight(axis, tstart, tend, wgs84long, wgs84lat):
+	events = GetSunEventsInDateRange(str(wgs84long), str(wgs84lat), tstart, tend)
 	axis.axvspan(tstart, tend, facecolor='0.5', alpha=0.5)
 	for e in events:
 		t0 = UtcToLocalTime(e[0].datetime())
@@ -174,7 +174,9 @@ def render_plot(urls, tstartstr, tendstr):
 			ax[i].text(0.5, (1 + i) / (len(ax) + 1.0), str(e), horizontalalignment='center', verticalalignment='center', \
 				transform = ax[i].transAxes, color=colors[i])
 
-	PlotDayNight(ax[0], tstart, tend)
+	placeName = url.split('.')[0]
+	wgs84long, wgs84lat, heightMeters = log.PlaceDetailsGet(placeName)
+	PlotDayNight(ax[0], tstart, tend, wgs84long, wgs84lat)
 	ax[0].axis["bottom"].major_ticklabels.set_rotation(30)
 	ax[0].axis["bottom"].major_ticklabels.set_ha("right")
 	ax[0].grid()

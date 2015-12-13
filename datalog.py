@@ -93,6 +93,16 @@ class DataLog:
 		else:
 			return result[0]
 
+	def PlaceDetailsGet(self, name):
+		cursor = self.__db.cursor()
+		cursor.execute('SELECT wgs84long, wgs84lat, heightMeters FROM places WHERE name=?', (name,))
+		result = cursor.fetchone()
+		cursor.close()
+		if result is None:
+			raise Exception('Unable to get details of place of name "' + name + '"')
+		else:
+			return result
+
 	def PlaceAdd(self, name, wgs84long, wgs84lat, heightMeters):
 		try:
 			key = self.PlaceGet(name)
