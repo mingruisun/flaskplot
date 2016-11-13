@@ -11,7 +11,21 @@
                 <h1>Weather</h1>
             </div>
             <div id="content">
-				<img src="/fig" alt="Figure">
+				<table>
+					<tr>
+					<td>
+					<form action="{{prev_page_link}}">
+						<input type="submit" value="Previous">
+					</form>
+					</td>
+					<td>
+					<form action="{{next_page_link}}">
+						<input type="submit" value="Next">
+					</form>
+					</td>
+					</tr>
+				</table>
+				<img src="{{plot_link}}" alt="Plot">
             </div>
         </div>
     </body>

@@ -3,9 +3,11 @@
 import flask
 import StringIO
 import datetime
-from dateutil import tz
+import dateutil
+import pytz
 import numpy as np
 import ephem
+import tzlocal
 
 # Import matplotlib in a way it does not use the GUI or tkinter
 import matplotlib as mpl
@@ -18,12 +20,24 @@ from datalog import Sensor, Signal, DataLog
 
 
 
+# Get "now" in UTC as datetime object
+def GetUtcNow():
+	return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+
+
+
+# Get "now" in local time as datetime object
+def GetLocalNow():
+	return GetUtcNow().astimezone(tzlocal.get_localzone())
+
+
+
 # Convert local time or vector of local times to UTC time
 def LocalTimeToUtc(localtime):
 	if isinstance(localtime, datetime.datetime):
-		return localtime.replace(tzinfo=tz.tzlocal()).astimezone(tz.tzutc())
+		return localtime.astimezone(pytz.utc)
 	elif isinstance(localtime, list):
-		return [ t.replace(tzinfo=tz.tzlocal()).astimezone(tz.tzutc()) for t in localtime ]
+		return [ t.astimezone(pytz.utc) for t in localtime ]
 	else:
 		raise Exception('Local time ' + str(localtime) + ' has unknown type ' + str(type(localtime)))
 
@@ -32,37 +46,17 @@ def LocalTimeToUtc(localtime):
 # Convert UTC time or vector of local times to local time
 def UtcToLocalTime(utctime):
 	if isinstance(utctime, datetime.datetime):
-		return utctime.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+		return utctime.replace(tzinfo=pytz.utc).astimezone(tzlocal.get_localzone())
 	elif isinstance(utctime, list):
-		return [ t.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()) for t in utctime ]
+		return [ t.replace(tzinfo=pytz.utc).astimezone(tzlocal.get_localzone()) for t in utctime ]
 	else:
 		raise Exception('UTC time ' + str(utctime) + ' has unknown type ' + str(type(utctime)))
 
 
 
-# Take local date in any form and return UTC time
-def ParseDate(localdate):
-	if isinstance(localdate, datetime.datetime):
-		return LocalTimeToUtc(localdate)
-	elif isinstance(localdate, basestring):
-		if localdate == 'now':
-			return datetime.datetime.utcnow()
-		try:
-			return LocalTimeToUtc(datetime.datetime.strptime(localdate, '%Y-%m-%d %H:%M:%S'))
-		except:
-			pass
-		try:
-			return LocalTimeToUtc(datetime.datetime.strptime(localdate, '%Y-%m-%d'))
-		except:
-			pass
-		try:
-			datestr = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-			return LocalTimeToUtc(datetime.datetime.strptime(datestr + ' ' + localdate, '%Y-%m-%d %H:%M:%S'))
-		except:
-			pass
-		raise Exception('Unable to parse date "' + localdate + '"')
-	else:
-		raise Exception('Date ' + str(localdate) + ' has unknown type ' + str(type(localdate)))
+def ParseTime(t):
+	return dateutil.parser.parse(t)
+
 
 
 
@@ -126,10 +120,10 @@ def DoPlot(x, y, axis, fmt):
 
 app = flask.Flask(__name__)
 
-@app.route('/fig/<urls>/<tstartstr>/<tendstr>')
+@app.route('/plot/<urls>/<tstartstr>/<tendstr>/')
 def render_plot(urls, tstartstr, tendstr):
-	tstart = ParseDate(tstartstr)
-	tend = ParseDate(tendstr)
+	tstart = LocalTimeToUtc(ParseTime(tstartstr))
+	tend = LocalTimeToUtc(ParseTime(tendstr))
 	log = DataLog()
 	log.Open(readOnly=True)
 	colors = 'rgb'
@@ -171,7 +165,8 @@ def render_plot(urls, tstartstr, tendstr):
 			if i > 0:
 				ax[i].axis['bottom'].toggle(all=False)
 		except Exception as e:
-			ax[i].text(0.5, (1 + i) / (len(ax) + 1.0), str(e), horizontalalignment='center', verticalalignment='center', \
+			ax[i].text(0.5, (1 + i) / (len(ax) + 1.0), str(e), \
+				horizontalalignment='center', verticalalignment='center', \
 				transform = ax[i].transAxes, color=colors[i])
 
 	placeName = url.split('.')[0]
@@ -183,20 +178,41 @@ def render_plot(urls, tstartstr, tendstr):
 
 	log.Close()
 	img = StringIO.StringIO()
-	plt.savefig(img, dpi=150)
+	mydpi = 150
+	plt.gcf().set_size_inches(1100/mydpi, 900/mydpi, forward=True)
+	plt.savefig(img, dpi=mydpi)
 	plt.close()
 	img.seek(0)
 	return flask.send_file(img, mimetype='image/png')
 
-@app.route('/fig')
-def default_plot():
-	tend = datetime.datetime.utcnow()
-	tstart = tend - datetime.timedelta(days=3)
-	return render_plot('Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity', tstart, tend)
+
+
+@app.route('/page/<urls>/<tstartstr>/<tendstr>/')
+def render_page(urls, tstartstr, tendstr):
+	dt = datetime.timedelta(days=2)
+	tstart = ParseTime(tstartstr)
+	tend = ParseTime(tendstr)
+	prev_page_link = '/page/' + urls + '/' + (tstart - dt).isoformat() + \
+		'/' + (tend - dt).isoformat() + '/'
+	next_page_link = '/page/' + urls + '/' + (tstart + dt).isoformat() + \
+		'/' + (tend + dt).isoformat() + '/'
+	plot_link      = '/plot/' + urls + '/' + tstartstr + \
+		'/' + tendstr + '/'
+	return flask.render_template('form.html', prev_page_link=prev_page_link,
+		next_page_link=next_page_link, plot_link=plot_link)
+
+
 
 @app.route('/')
-def form():
-	return flask.render_template('form.html')
+def render_default():
+	urls = 'Brunnen.DHT22.Temperature,Brunnen.BMP180.Pressure,Brunnen.DHT22.Relative_Humidity'
+	tend = GetLocalNow()
+	tendstr = tend.isoformat()
+	tstart = tend - datetime.timedelta(days=3)
+	tstartstr = tstart.isoformat()
+	return flask.redirect('/page/' + urls + '/' + tstartstr + '/' + tendstr + '/')
+
+
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=80, debug=False)
